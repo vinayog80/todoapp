@@ -1,30 +1,55 @@
-import { Dimensions, Text, View, TouchableOpacity, FlatList, Button, TextInput, Image, } from 'react-native'
+import { Dimensions, Text, View, TouchableOpacity, FlatList, Button, TextInput, Image, Alert, } from 'react-native'
 import React, { Component } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import BouncyCheckbox from 'react-native-bouncy-checkbox'
 
+const EDITIMG = require('../../assets/editICON.png')
+
 export class AllTab extends Component {
     constructor(props) {
-      super(props)
-      this.state = {
-          todos: [],
-          todoTxt: '',
-      }
+        super(props)
+        this.state = {
+            todos: [],
+            todoTxt: '',
+            isEditTodo: null
+        }
     }
     onChangeTodoInput = (txt) => {
         this.setState({ todoTxt: txt })
     }
-
     onAddNewTodo = async () => {
-        let newTodo = [...this.state.todos, {
-            id: this.state.todos.length + 1,
-            todoInputTxt: this.state.todoTxt,
-            isDone: false,
-            isSelected: false,
-            isFiltered:false
-        }]
-        this.setState({ todoTxt: '', todos: newTodo })
-        console.log('todo saved', newTodo)
+        const { todoTxt, todos, isEditTodo } = this.state;
+        if (!todoTxt && todoTxt == '') {
+            Alert.alert('please write something to add!');
+        }
+        else if (todoTxt) {
+            this.setState({
+                todos: todos.map((item) => {
+                    if (item.id == isEditTodo) {
+                        return {
+                            ...item, todoInputTxt: todoTxt
+                        }
+                    };
+                    return item;
+                }),
+                todoTxt: '',
+                isEditTodo: null
+            })
+        }
+        else {
+            let newTodo = [...todos, {
+                id: todos.length + 1,
+                todoInputTxt: todoTxt,
+                isDone: false,
+                isSelected: false,
+                isFiltered: false
+            }]
+            this.setState({
+                todos: newTodo,
+                todoTxt: '',
+            })
+            console.log('todo saved', newTodo)
+        }
         try {
             let setTodo = await AsyncStorage.setItem('todoKey', JSON.stringify(newTodo))
             console.log(`setTodo: ${setTodo}`)
@@ -48,7 +73,7 @@ export class AllTab extends Component {
         this.onSaveTodo()
         this.storeSelectedTd()
         this.retreiveDoneTodos()
-    } 
+    }
 
     onDeleteTodo = async (id) => {
         try {
@@ -63,7 +88,7 @@ export class AllTab extends Component {
             console.log(error)
         }
     }
-    
+
     deleteAll = async () => {
         try {
             await AsyncStorage.clear()
@@ -74,23 +99,6 @@ export class AllTab extends Component {
         }
     }
 
-    selectedTodo = (id) => {
-        const { todos } = this.state
-        let selectTodo = todos.map((item) => {
-            if (item) {
-                if (item.id === id) {
-                    return { ...item, isFiltered: !item.isFiltered }
-                }
-            }
-            else {
-                return item
-            }
-        })
-        this.setState({
-            todos:selectTodo
-        })
-    }
-    
     onShowTodoDel = async (id) => {
         try {
             await this.setState({
@@ -118,9 +126,10 @@ export class AllTab extends Component {
             console.log(error)
         }
     }
-    isDoneTodo = async(id) => {
+
+    isDoneTodo = async (id) => {
         try {
-           await this.setState({
+            await this.setState({
                 todos: this.state.todos.filter(todo => todo.id > 0).
                     map(todo => (todo.id === id) ? { ...todo, isDone: !todo.isDone } : todo)
             })
@@ -137,7 +146,7 @@ export class AllTab extends Component {
             let temp = await AsyncStorage.getItem('doneKey')
             let savedDt = JSON.parse(temp)
             if (savedDt !== null) {
-                this.setState({todos:savedDt})
+                this.setState({ todos: savedDt })
             }
             console.log(savedDt)
         } catch (error) {
@@ -145,6 +154,15 @@ export class AllTab extends Component {
         }
     }
 
+    onEditTodo = (id) => {
+        let editTodo = this.state.todos.find((item) => {
+            return item.id == id;
+        });
+        this.setState({
+            todoTxt: editTodo.todoInputTxt,
+            isEditTodo: id
+        })
+    }
     render() {
         return (
             <View style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height }}>
@@ -174,7 +192,7 @@ export class AllTab extends Component {
                     </View>
 
                     <View style={{ marginTop: 10 }}>
-                     
+
                         <FlatList
                             data={this.state.todos}
                             keyExtractor={(item) => item.id}
@@ -194,7 +212,7 @@ export class AllTab extends Component {
                                     }}>
                                     {
                                         item.isSelected ? (
-                                            
+
                                             <View>
                                                 <BouncyCheckbox
                                                     fillColor={item?.isDone ? "#3c005a" : null}
@@ -207,6 +225,11 @@ export class AllTab extends Component {
                                             <View>
                                             </View>
                                     }
+                                    {
+                                        item.isSelected ? (<TouchableOpacity onPress={() => this.onEditTodo(item.id)} activeOpacity={.7}>
+                                            <Image source={EDITIMG} style={{ width: 28, height: 28 }} resizeMode="contain" />
+                                        </TouchableOpacity>) : (<View />)
+                                    }
                                     <View>
                                         <TouchableOpacity onPress={() => this.onShowTodoDel(item.id)}>
                                             <Text
@@ -217,7 +240,7 @@ export class AllTab extends Component {
                                                 }}>{item.todoInputTxt}</Text>
                                         </TouchableOpacity>
                                     </View>
-                                 
+
                                     <View style={{ backgroundColor: '#3c005a', width: 100, height: 40, justifyContent: 'center', borderRadius: 5, alignItems: 'center', marginTop: -8 }}>
                                         <Text style={{ color: "#fff", textAlign: 'center', color: "#fff" }}>Status: <Text style={{ color: "#fff", fontWeight: '800' }}>{item.isDone ? 'Completed' : 'Active'}</Text></Text>
                                     </View>
@@ -225,7 +248,7 @@ export class AllTab extends Component {
                                     {
                                         item.isFiltered ? (<View>wow selected!</View>) : undefined
                                     }
-                                  
+
                                     <View>
                                         {item.isSelected ? (
                                             <TouchableOpacity
@@ -244,7 +267,7 @@ export class AllTab extends Component {
                 </View>
             </View>
         )
-  }
+    }
 }
 
 export default AllTab

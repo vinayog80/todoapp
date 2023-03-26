@@ -16,7 +16,6 @@ export class TodoNavigation extends Component {
                     screenOptions={{
                         headerShown: false
                     }}>
-
                     <TodoStack.Screen name='AllTab' component={TabNavigator} />
                     <TodoStack.Screen name='Active' component={ActiveTab} />
                     <TodoStack.Screen name='Completed' component={CompletedTab} />
